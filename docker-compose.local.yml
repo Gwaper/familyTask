@@ -1,0 +1,9 @@
+# Test sur Mac (Docker Desktop) : port publié classiquement, données dans ./data/kanban.
+# docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+services:
+  kanban:
+    network_mode: bridge
+    ports:
+      - "${PORT:-8090}:${PORT:-8090}"
+    volumes: !override
+      - ./data/kanban:/data/kanban
