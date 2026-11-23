@@ -31,26 +31,65 @@ export function chooseSpeech<V extends VoiceLike>(
 
 const synth = typeof speechSynthesis === 'undefined' ? undefined : speechSynthesis;
 let voices: SpeechSynthesisVoice[] = synth?.getVoices() ?? [];
+const listeners = new Set<() => void>();
 
-function subscribe(onChange: () => void): () => void {
-  if (!synth) return () => {};
-  const update = () => {
-    voices = synth.getVoices();
-    onChange();
-  };
-  synth.addEventListener('voiceschanged', update);
-  return () => synth.removeEventListener('voiceschanged', update);
+function refreshVoices(): void {
+  const list = synth?.getVoices() ?? [];
+  if (list.length === voices.length) return;
+  voices = list;
+  listeners.forEach((notify) => notify());
 }
 
+// Les voix arrivent en différé (Chromium). On écoute dès le chargement du module, pour ne pas rater
+// l'unique « voiceschanged », et on réinterroge quelques secondes pour les navigateurs qui ne l'émettent pas.
+const VOICE_RETRY_MS = 500;
+const VOICE_RETRIES = 20;
+if (synth) {
+  synth.addEventListener('voiceschanged', refreshVoices);
+  let tries = 0;
+  const timer = setInterval(() => {
+    refreshVoices();
+    if (voices.length > 0 || ++tries >= VOICE_RETRIES) clearInterval(timer);
+  }, VOICE_RETRY_MS);
+}
+
+function subscribe(onChange: () => void): () => void {
+  listeners.add(onChange);
+  refreshVoices();
+  return () => listeners.delete(onChange);
+}
+
+/** Référence gardée tant que la lecture dure : sinon Chromium peut la libérer avant de parler. */
+let current: SpeechSynthesisUtterance | undefined;
+
+/** Chromium ignore souvent un speak() appelé juste après cancel() : on laisse passer un court délai. */
+const AFTER_CANCEL_MS = 120;
+
 export function say(text: Bilingual): void {
+  if (!synth) return;
+  refreshVoices();
   const choice = chooseSpeech(text, voices);
-  if (!synth || !choice) return;
-  synth.cancel();
+  if (!choice) return;
+
   const utterance = new SpeechSynthesisUtterance(choice.text);
   utterance.lang = choice.lang;
   if (choice.voice) utterance.voice = choice.voice;
   utterance.rate = 0.9;
-  synth.speak(utterance);
+  utterance.onend = utterance.onerror = () => {
+    if (current === utterance) current = undefined;
+  };
+  current = utterance;
+
+  const speak = () => {
+    synth.resume(); // Chromium reste parfois en pause après un passage en arrière-plan
+    synth.speak(utterance);
+  };
+  if (synth.speaking || synth.pending) {
+    synth.cancel();
+    setTimeout(speak, AFTER_CANCEL_MS);
+  } else {
+    speak();
+  }
 }
 
 /** true si l'appareil a au moins une voix (sinon on masque les haut-parleurs). */
