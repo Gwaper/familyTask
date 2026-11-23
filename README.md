@@ -7,7 +7,7 @@ sur un écran partagé, et les enfants qui ne lisent pas peuvent l'utiliser : pi
   - un tap sur une carte choisit qui a fait la tâche ;
   - la carte se fait glisser vers « Fini ! », ou on appuie sur la grosse flèche ;
   - 🔊 lit le nom de la tâche en espagnol.
-- **Vue gestion** (bouton ⚙️, ou `http://IP:8090/#gestion`) : tâches, membres, photos et remise à zéro manuelle.
+- **Vue gestion** (bouton ⚙️, ou `http://IP:8090/gestion`) : tâches, membres, photos et remise à zéro manuelle.
 - **Remise à zéro** : chaque jour à 03:00, les tâches récurrentes reviennent dans « À faire » avec les mêmes personnes attribuées.
 
 Configuration (variables d'environnement) :
@@ -177,7 +177,7 @@ de chaque carte pour la déplacer. Le haut-parleur est masqué si la TV n'a pas 
 
 ### Téléphones (gestion)
 
-Ouvre simplement `http://IP-DU-SERVEUR:8090/#gestion` et ajoute la page aux favoris ou à l'écran d'accueil.
+Ouvre simplement `http://IP-DU-SERVEUR:8090/gestion` et ajoute la page aux favoris ou à l'écran d'accueil.
 Une modification faite sur un téléphone apparaît sur l'écran partagé en 3 secondes au plus.
 
 ---

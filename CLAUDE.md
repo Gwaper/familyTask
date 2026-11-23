@@ -30,7 +30,7 @@ server/reset.ts        logique de remise à zéro (fonctions pures + application
 server/validate.ts     lecture des corps JSON
 web/src/i18n.ts        TOUS les textes de l'interface ({ fr, es })
 web/src/ritual/        vue rituel (par défaut)
-web/src/manage/        vue gestion (#gestion)
+web/src/manage/        vue gestion (/gestion ou /manage)
 ```
 
 ## Schéma SQLite

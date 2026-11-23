@@ -21,7 +21,7 @@ export function Manage({ board, mutate }: { board: Board; mutate: Mutate }) {
   return (
     <main className="manage">
       <header className="manage-header">
-        <a className="secondary back-link" href="#">⬅️ {both(t.back)}</a>
+        <a className="secondary back-link" href="/">⬅️ {both(t.back)}</a>
       </header>
 
       <ManagedList

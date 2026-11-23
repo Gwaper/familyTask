@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { MANAGE_PATH } from '../routes.ts';
 import {
   DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent, type DragStartEvent,
@@ -107,7 +108,7 @@ export function Ritual({ board, mutate, setPaused }: Props) {
 
   return (
     <main className="ritual">
-      <a className="manage-link" href="#gestion" aria-label={t.manage.fr}>⚙️</a>
+      <a className="manage-link" href={MANAGE_PATH} aria-label={t.manage.fr}>⚙️</a>
       <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={endDrag}>
         <div className="columns">
           {renderColumn('todo')}
