@@ -1,36 +1,37 @@
-# Déploiement Fly.io (voir README § Déploiement). Le nom de l'app est choisi au `fly launch`.
-app = "familytask"
-primary_region = "cdg"
+# fly.toml app configuration file generated for familytask on 2026-11-26T20:36:41Z
+#
+# See https://docs.fly.io/reference/configuration for information about how to use this file.
+#
+
+app = 'familytask'
+primary_region = 'cdg'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  PORT = "8080"
-  TZ = "Europe/Paris"
-  RESET_TIME = "03:00"
+  PORT = '8080'
+  RESET_TIME = '03:00'
+  TZ = 'Europe/Paris'
 
-# SQLite + photos : un seul volume, donc une seule machine.
-[mounts]
-  source = "kanban_data"
-  destination = "/data/kanban"
+[[mounts]]
+  source = 'kanban_data'
+  destination = '/data/kanban'
 
-# La machine s'arrête quand personne n'utilise l'app et redémarre à la première requête ;
-# la remise à zéro manquée est rattrapée au démarrage.
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
   [[http_service.checks]]
-    interval = "30s"
-    timeout = "5s"
-    grace_period = "10s"
-    method = "GET"
-    path = "/api/health"
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/api/health'
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
+  size = 'shared-cpu-1x'
+  memory = '256mb'
