@@ -40,7 +40,7 @@ export function CardContent({ task, members, onOpen, onMove }: Omit<Props, 'cele
       )}
       {task.done && <span className="card-check" aria-hidden="true"><CheckIcon /></span>}
       <div className="card-body">
-        <PictureView value={task.icon} size={80} />
+        <span className="card-icon"><PictureView value={task.icon} size={72} /></span>
         <div className="name-fr">{task.nameFr}</div>
         {task.nameEs && <div className="name-es">{task.nameEs}</div>}
       </div>
