@@ -20,5 +20,5 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
 COPY --from=build /app/shared ./shared
-USER node
-CMD ["node", "--disable-warning=ExperimentalWarning", "server/index.ts"]
+# Un volume (Fly.io, Docker) est monté en root : on lui donne l'utilisateur node, puis on lâche les droits root.
+CMD ["sh", "-c", "mkdir -p \"$DATA_DIR\" && chown -R node:node \"$DATA_DIR\" && exec setpriv --reuid=node --regid=node --init-groups node --disable-warning=ExperimentalWarning server/index.ts"]

@@ -1,6 +1,9 @@
+import { mkdtempSync, readdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Board } from '../shared/types.ts';
-import { createApp } from './app.ts';
+import { createApp, photoFileName } from './app.ts';
 import { openDb } from './db.ts';
 
 let app: ReturnType<typeof createApp>;
@@ -44,5 +47,61 @@ describe('API', () => {
   it('liste zéro photo si le dossier est absent et refuse les chemins hors du dossier', async () => {
     expect(await (await send('GET', '/api/photos')).json()).toEqual([]);
     expect((await send('GET', '/photos/..%2F..%2Fetc%2Fpasswd')).status).toBe(404);
+  });
+});
+
+describe('code famille', () => {
+  beforeEach(() => {
+    app = createApp({ db: openDb(':memory:'), photosDir: '/nonexistent', familyCode: 'soleil' });
+  });
+
+  it("refuse l'API et les photos sans cookie, laisse passer health", async () => {
+    expect((await send('GET', '/api/board')).status).toBe(401);
+    expect((await send('GET', '/photos/a.jpg')).status).toBe(401);
+    expect((await send('GET', '/api/health')).status).toBe(200);
+  });
+
+  it('refuse un mauvais code, accepte le bon et pose un cookie valable', async () => {
+    expect((await send('POST', '/api/login', { code: 'lune' })).status).toBe(401);
+    expect((await send('POST', '/api/login', {})).status).toBe(401);
+    const res = await send('POST', '/api/login', { code: ' soleil ' });
+    expect(res.status).toBe(200);
+    const cookie = res.headers.get('Set-Cookie') ?? '';
+    expect(cookie).toMatch(/HttpOnly/);
+    const authed = await app.request('/api/board', { headers: { Cookie: cookie.split(';')[0] } });
+    expect(authed.status).toBe(200);
+  });
+});
+
+describe('upload de photos', () => {
+  let photosDir: string;
+  const upload = (name: string, size = 10) => {
+    const form = new FormData();
+    form.append('file', new File([new Uint8Array(size)], name));
+    return app.request('/api/photos', { method: 'POST', body: form });
+  };
+
+  beforeEach(() => {
+    photosDir = mkdtempSync(join(tmpdir(), 'kanban-photos-'));
+    app = createApp({ db: openDb(':memory:'), photosDir });
+  });
+
+  it("enregistre l'image sous un nom sûr et la liste", async () => {
+    const res = await upload('Photo Léa.JPG');
+    expect(res.status).toBe(201);
+    const { file } = await res.json();
+    expect(file).toMatch(/^\d+-photo-l-a\.jpg$/);
+    expect(readdirSync(photosDir)).toEqual([file]);
+    expect(await (await send('GET', '/api/photos')).json()).toEqual([file]);
+  });
+
+  it('refuse un fichier non image ou trop gros', async () => {
+    expect((await upload('script.sh')).status).toBe(400);
+    expect((await upload('grosse.jpg', 6 * 1024 * 1024)).status).toBe(413);
+    expect(readdirSync(photosDir)).toEqual([]);
+  });
+
+  it('nettoie le nom de fichier', () => {
+    expect(photoFileName('../../etc/Mon Doudou!.png', 1)).toBe('1-mon-doudou-.png');
   });
 });

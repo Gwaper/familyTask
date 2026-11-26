@@ -41,3 +41,6 @@ export function readIds(body: unknown, key: string): number[] | null {
   const ids = body[key];
   return Array.isArray(ids) && ids.every(Number.isInteger) ? (ids as number[]) : null;
 }
+
+/** Lit `{ code }` (connexion par code famille), ou null. */
+export const readCode = (body: unknown): string | null => readFields<{ code: string }>(body, { code: 'string' })?.code ?? null;

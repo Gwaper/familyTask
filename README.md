@@ -7,7 +7,7 @@ sur un écran partagé, et les enfants qui ne lisent pas peuvent l'utiliser : pi
   - un tap sur une carte choisit qui a fait la tâche ;
   - la carte se fait glisser vers « Fini ! », ou on appuie sur la grosse flèche ;
   - 🔊 lit le nom de la tâche en espagnol.
-- **Vue gestion** (bouton ⚙️, ou `http://IP:8090/gestion`) : tâches, membres, photos et remise à zéro manuelle.
+- **Vue gestion** (bouton ⚙️, ou `https://ADRESSE/gestion`) : tâches, membres, envoi de photos et remise à zéro manuelle.
 - **Remise à zéro** : chaque jour à 03:00, les tâches récurrentes reviennent dans « À faire » avec les mêmes personnes attribuées.
 
 Configuration (variables d'environnement) :
@@ -17,6 +17,7 @@ Configuration (variables d'environnement) :
 | `PORT` | `8090` | port HTTP |
 | `RESET_TIME` | `03:00` | heure de la remise à zéro quotidienne (fuseau `Europe/Paris`) |
 | `DATA_DIR` | `./data/kanban` (Docker : `/data/kanban`) | base SQLite `kanban.db` et dossier `photos/` |
+| `FAMILY_CODE` | vide | code demandé une fois par appareil. Vide : accès libre (à réserver au développement) |
 
 ---
 
@@ -44,131 +45,81 @@ npm start        # http://localhost:8090
 Avec Docker Desktop lancé :
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+docker compose up -d --build                      # accès libre
+FAMILY_CODE=soleil docker compose up -d --build   # avec le code famille
 open http://localhost:8090
-docker compose -f docker-compose.yml -f docker-compose.local.yml down
+docker compose down
 ```
 
-`docker-compose.local.yml` publie simplement le port et range les données dans `./data/kanban`.
-Sur le serveur, on utilise seulement `docker-compose.yml`, en mode réseau `host` (voir § 5).
+Les données sont rangées dans `./data/kanban`. Le cookie du code famille est marqué `Secure` : il fonctionne sur
+`localhost` et en HTTPS, pas sur `http://IP-DU-MAC`.
 
 ---
 
-## 4. Déploiement sur le serveur (Ubuntu 24.04)
+## 4. Déploiement sur Fly.io
 
-> Toutes ces commandes se lancent **sur le serveur**, par SSH. Remplace `user@serveur` par ton accès.
+Pourquoi Fly.io : voir le [benchmark d'hébergement](docs/hebergement.md).
 
-### 4.1 Installer Docker (si `docker --version` ne répond rien)
+### 4.1 Une seule fois, depuis le Mac
 
-Dépôt officiel Docker :
-
-```sh
-sudo apt-get update
-sudo apt-get install -y ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
-  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo systemctl enable --now docker      # Docker redémarre avec le serveur
-sudo usermod -aG docker $USER           # docker sans sudo (se reconnecter ensuite)
-```
-
-Vérification : `docker --version && docker compose version`.
-
-### 4.2 Préparer le dossier de données
-
-Le conteneur tourne avec l'utilisateur `node` (uid 1000) :
+Installer la CLI (`brew install flyctl`), puis :
 
 ```sh
-sudo mkdir -p /data/kanban/photos
-sudo chown -R 1000:1000 /data/kanban
+fly auth signup                                    # ou fly auth login ; l'offre Free (5 $ d'usage/mois) suffit
+fly launch --no-deploy --copy-config --name NOM-DE-L-APP --region cdg
+fly volumes create kanban_data --region cdg --size 1
+fly secrets set FAMILY_CODE='un-code-facile-a-retenir'
+fly deploy --ha=false                              # premier déploiement (une seule machine : un seul volume)
 ```
 
-### 4.3 Copier le projet et lancer
+`fly launch` met à jour la ligne `app =` de `fly.toml` avec le nom choisi : commite ce changement.
+L'app répond sur `https://NOM-DE-L-APP.fly.dev`. Pour un domaine à toi : `fly certs add taches.example.com`.
 
-Depuis le Mac (sans `node_modules`, `dist` ni `data`) :
+### 4.2 Déploiement automatique (GitHub Actions)
+
+Le workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) :
+
+- sur chaque pull request : `npm ci`, `npm run build` (vérification des types) et `npm test` ;
+- sur chaque push sur `main` : les mêmes tests, puis `flyctl deploy --remote-only --ha=false` (l'image est construite chez Fly).
+
+À configurer une fois :
 
 ```sh
-rsync -av --exclude node_modules --exclude dist --exclude data --exclude .git \
-  ./ user@serveur:~/family-kanban/
+fly tokens create deploy -x 999999h     # copie la valeur affichée
 ```
 
-Puis sur le serveur :
+Dans GitHub : **Settings → Secrets and variables → Actions → New repository secret**, nom `FLY_API_TOKEN`,
+valeur = le jeton. Le prochain push sur `main` déploie ; le lancement manuel est possible depuis l'onglet **Actions**
+(*Run workflow*).
 
-```sh
-cd ~/family-kanban
-docker compose up -d --build
-docker compose ps            # doit afficher (healthy) après quelques secondes
-docker compose logs -f       # journal de l'app
-```
+### 4.3 Fonctionnement
 
-Pour changer de port ou d'heure de remise à zéro, crée un fichier `.env` à côté de `docker-compose.yml`,
-puis relance `docker compose up -d` :
-
-```sh
-PORT=8090
-RESET_TIME=03:00
-```
-
-**Mise à jour** : refaire le `rsync`, puis `docker compose up -d --build`. Les données de `/data/kanban` sont conservées.
-
-### 4.4 Redémarrage automatique (mises à jour de 4 h 30)
-
-- `restart: unless-stopped` et `systemctl enable docker` : l'app revient seule après un redémarrage du serveur.
-- SQLite est en mode WAL avec `synchronous = FULL` : chaque modification est écrite sur disque immédiatement.
-- Au démarrage, l'app rattrape la remise à zéro si elle a été manquée (serveur éteint à 03:00). Un redémarrage
-  à 4 h 30, après la remise à zéro de 03:00, ne la refait pas.
+- La machine s'arrête quand aucun écran n'utilise l'app et redémarre en 1 à 2 s à la première requête.
+  La remise à zéro manquée pendant l'arrêt est rattrapée au démarrage.
+- Pour changer l'heure de remise à zéro : `RESET_TIME` dans la section `[env]` de `fly.toml`, puis push.
+- Pour changer le code famille : `fly secrets set FAMILY_CODE='nouveau-code'` (chaque appareil le redemandera).
+- Journal de l'app : `fly logs`.
 
 ---
 
-## 5. Pare-feu UFW : port 8090 en réseau local uniquement
+## 5. Installer l'application sur les appareils (PWA)
 
-**Remplace `192.168.1.0/24` par ton sous-réseau** (`ip -4 addr` sur le serveur : une adresse `192.168.1.42/24`
-correspond au réseau `192.168.1.0/24`).
+Ouvre `https://NOM-DE-L-APP.fly.dev` sur l'appareil et saisis le code famille. Le code n'est demandé qu'une fois
+par appareil (et une fois de plus dans l'app installée sur iPhone/iPad, qui ne partage pas les cookies de Safari).
 
-```sh
-sudo ufw allow from 192.168.1.0/24 to any port 8090 proto tcp comment 'Kanban familial (LAN)'
-sudo ufw status numbered
-```
+### Téléphone ou tablette Android (Chrome)
 
-Test depuis un appareil du réseau local : `http://IP-DU-SERVEUR:8090`.
+Menu ⋮ → **Installer l'application** (ou « Ajouter à l'écran d'accueil »). L'app s'ouvre en plein écran,
+en portrait ou en paysage.
 
-> **Pourquoi `network_mode: host` ?** Quand Docker publie un port (`ports: "8090:8090"`), il ajoute ses propres
-> règles iptables, qui passent **avant** UFW : le port serait alors joignable même si UFW le bloque. En mode `host`,
-> l'app écoute directement sur le port 8090 du serveur, et la règle UFW ci-dessus s'applique normalement.
-> Si Open WebUI a été lancé avec `ports:`, il est concerné par ce problème : vérifie avec `sudo iptables -L DOCKER -n`.
+### iPhone / iPad (Safari)
 
----
-
-## 6. Installer l'application sur les appareils (PWA)
-
-Ouvre `http://IP-DU-SERVEUR:8090` sur l'appareil.
-
-> **À savoir :** les navigateurs n'installent une vraie PWA (plein écran, service worker) qu'en HTTPS. Sur le réseau
-> local en HTTP, il faut donc l'une des astuces ci-dessous. L'app n'a besoin d'aucun accès à Internet :
-> tout (polices, sons, emojis) est embarqué.
-
-### Tablette Android (Chrome)
-
-1. Dans Chrome, ouvre `chrome://flags/#unsafely-treat-insecure-origin-as-secure`.
-2. Saisis `http://IP-DU-SERVEUR:8090`, passe le réglage sur **Enabled**, puis appuie sur **Relaunch**.
-3. Ouvre l'app, menu ⋮ → **Installer l'application** (ou « Ajouter à l'écran d'accueil »).
-4. L'app s'ouvre en plein écran, en paysage.
-
-### iPad (Safari)
-
-1. Ouvre l'app dans Safari, bouton Partager → **Sur l'écran d'accueil**.
-2. L'app s'ouvre sans barre Safari. L'iPad ignore le verrouillage en paysage : tourne la tablette en paysage, puis
-   active le verrouillage de la rotation dans le Centre de contrôle.
+Bouton Partager → **Sur l'écran d'accueil**. L'app s'ouvre sans barre Safari.
 
 ### PC avec écran tactile
 
-- Même réglage que pour Android dans Chrome ou Edge (`edge://flags/#unsafely-treat-insecure-origin-as-secure`), puis
-  menu → **Installer**.
-- Ou bien en mode kiosque : `chrome --kiosk http://IP-DU-SERVEUR:8090`.
+Chrome ou Edge → icône d'installation dans la barre d'adresse, ou en mode kiosque :
+`chrome --kiosk https://NOM-DE-L-APP.fly.dev`.
 
 ### TV
 
@@ -177,8 +128,16 @@ de chaque carte pour la déplacer. Le haut-parleur est masqué si la TV n'a pas 
 
 ### Téléphones (gestion)
 
-Ouvre simplement `http://IP-DU-SERVEUR:8090/gestion` et ajoute la page aux favoris ou à l'écran d'accueil.
-Une modification faite sur un téléphone apparaît sur l'écran partagé en 3 secondes au plus.
+Ouvre `https://NOM-DE-L-APP.fly.dev/gestion`. Une modification faite sur un téléphone apparaît sur l'écran partagé
+en 3 secondes au plus.
+
+---
+
+## 6. Ajouter des photos
+
+Dans la vue gestion, en modifiant une tâche ou un membre : **Image → Photos → 📷 Ajouter une photo**. Sur téléphone,
+on peut prendre la photo directement. Formats `.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`, 5 Mo au plus.
+Conseil : des images carrées.
 
 ---
 
@@ -203,40 +162,20 @@ Dans la vue gestion, le bouton 🔊 à côté du nom espagnol permet de vérifie
 
 ---
 
-## 8. Ajouter des photos
+## 8. Sauvegarder la base SQLite
 
-Les avatars et les pictogrammes peuvent être des photos (`.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`) déposées dans
-`/data/kanban/photos` sur le serveur.
+Fly.io fait un snapshot quotidien du volume (`fly volumes snapshots list kanban_data`), conservé quelques jours.
 
-Depuis le Mac :
-
-```sh
-scp photo-lea.jpg doudou.png user@serveur:/data/kanban/photos/
-```
-
-Sur le serveur, si besoin, corrige les droits : `sudo chown 1000:1000 /data/kanban/photos/*`.
-Elles apparaissent aussitôt dans l'onglet **Photos / Fotos** du sélecteur d'image de la vue gestion.
-Conseil : des images carrées d'environ 300 × 300 px.
-
----
-
-## 9. Sauvegarder la base SQLite
-
-Toutes les données sont dans `/data/kanban/kanban.db`, plus les photos.
-
-Sauvegarde cohérente, même app en marche, sans rien installer :
+Copie sur le Mac, à la demande :
 
 ```sh
-mkdir -p /data/backups
-docker exec family-kanban node -e "new (require('node:sqlite').DatabaseSync)('/data/kanban/kanban.db').exec(\"VACUUM INTO '/data/kanban/backup.db'\")"
-mv /data/kanban/backup.db /data/backups/kanban-$(date +%F).db
+fly ssh console        # puis, dans la console de la machine :
+node -e "new (require('node:sqlite').DatabaseSync)('/data/kanban/kanban.db').exec(\"VACUUM INTO '/data/kanban/backup.db'\")"
+exit
+fly ssh sftp get /data/kanban/backup.db kanban-$(date +%F).db
+fly ssh console -C "rm /data/kanban/backup.db"
 ```
 
-Sauvegarde quotidienne à 2 h (`crontab -e`) :
-
-```cron
-0 2 * * * docker exec family-kanban node -e "new (require('node:sqlite').DatabaseSync)('/data/kanban/kanban.db').exec(\"VACUUM INTO '/data/kanban/backup.db'\")" && mv /data/kanban/backup.db /data/backups/kanban-$(date +\%F).db
-```
-
-**Restauration** : `docker compose down`, copie la sauvegarde vers `/data/kanban/kanban.db`, supprime
-`kanban.db-wal` et `kanban.db-shm`, puis `docker compose up -d`.
+**Restauration** : `fly ssh sftp shell` → `put kanban-AAAA-MM-JJ.db /data/kanban/restore.db`, puis
+`fly ssh console` → `mv /data/kanban/restore.db /data/kanban/kanban.db && rm -f /data/kanban/kanban.db-wal /data/kanban/kanban.db-shm`,
+et enfin `fly machine restart`.

@@ -2,11 +2,12 @@
   "name": "Tâches de la famille / Tareas de la familia",
   "short_name": "Tâches",
   "lang": "fr",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone"],
-  "orientation": "landscape",
+  "orientation": "any",
   "background_color": "#fff6e5",
   "theme_color": "#fff6e5",
   "icons": [

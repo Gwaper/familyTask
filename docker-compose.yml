@@ -1,22 +1,17 @@
-# Serveur : réseau de l'hôte pour que la règle UFW (réseau local uniquement) s'applique.
-# Un port publié avec `ports:` passerait outre UFW.
+# Test de l'image sur le Mac (Docker Desktop) : http://localhost:8090, données dans ./data/kanban.
+# docker compose up -d --build   (FAMILY_CODE=… docker compose up -d pour tester le code famille)
 services:
   kanban:
     build: .
     image: family-kanban
     container_name: family-kanban
-    restart: unless-stopped
     init: true
-    network_mode: host
+    ports:
+      - "${PORT:-8090}:${PORT:-8090}"
     environment:
       PORT: ${PORT:-8090}
       RESET_TIME: ${RESET_TIME:-03:00}
+      FAMILY_CODE: ${FAMILY_CODE:-}
       TZ: Europe/Paris
     volumes:
-      - ${DATA_PATH:-/data/kanban}:/data/kanban
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/api/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
+      - ./data/kanban:/data/kanban

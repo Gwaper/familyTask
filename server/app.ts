@@ -1,19 +1,23 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { Hono, type Context } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
+import { bodyLimit } from 'hono/body-limit';
 import type { MemberFields, TaskInput } from '../shared/types.ts';
 import {
   createMember, createTask, deleteRow, getBoard, reorder, resetRecurringTasks,
   setTaskMembers, updateMember, updateTask, type Db, type OrderedTable,
 } from './db.ts';
-import { readIds, readMember, readTask } from './validate.ts';
+import { requireFamily, sameToken, setFamilyCookie, tokenFor } from './auth.ts';
+import { readCode, readIds, readMember, readTask } from './validate.ts';
 
 export interface AppOptions {
   db: Db;
   photosDir: string;
   /** Dossier du front buildé, relatif au répertoire courant. Absent en dev (Vite sert le front). */
   staticDir?: string;
+  /** Code famille exigé pour l'API et les photos. Absent : accès libre (dev, tests). */
+  familyCode?: string;
 }
 
 const IMAGE_TYPES: Record<string, string> = {
@@ -23,6 +27,11 @@ const IMAGE_TYPES: Record<string, string> = {
   '.webp': 'image/webp',
   '.gif': 'image/gif',
 };
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+/** Nom de fichier sûr et unique : `1732650000000-photo-lea.jpg`. */
+export const photoFileName = (original: string, now: number): string =>
+  `${now}-${basename(original).toLowerCase().replace(/[^a-z0-9._-]+/g, '-')}`;
 
 const badRequest = (c: Context) => c.json({ error: 'invalid body' }, 400);
 const notFound = (c: Context) => c.json({ error: 'not found' }, 404);
@@ -30,8 +39,18 @@ const ok = (c: Context) => c.json({ ok: true });
 const idParam = (c: Context): number => Number(c.req.param('id'));
 const jsonBody = (c: Context): Promise<unknown> => c.req.json().catch(() => null);
 
-export function createApp({ db, photosDir, staticDir }: AppOptions): Hono {
+export function createApp({ db, photosDir, staticDir, familyCode }: AppOptions): Hono {
   const app = new Hono();
+
+  if (familyCode) {
+    app.use(requireFamily(familyCode));
+    app.post('/api/login', async (c) => {
+      const token = tokenFor(readCode(await jsonBody(c)) ?? '');
+      if (!sameToken(token, tokenFor(familyCode))) return c.json({ error: 'unauthorized' }, 401);
+      setFamilyCookie(c, token);
+      return ok(c);
+    });
+  }
 
   app.get('/api/health', ok);
   app.get('/api/board', (c) => c.json(getBoard(db)));
@@ -85,6 +104,17 @@ export function createApp({ db, photosDir, staticDir }: AppOptions): Hono {
     const files = await readdir(photosDir).catch(() => []);
     return c.json(files.filter((f) => extname(f).toLowerCase() in IMAGE_TYPES).sort());
   });
+  app.post(
+    '/api/photos',
+    bodyLimit({ maxSize: MAX_PHOTO_BYTES, onError: (c) => c.json({ error: 'too large' }, 413) }),
+    async (c) => {
+      const { file } = await c.req.parseBody();
+      if (!(file instanceof File) || !(extname(file.name).toLowerCase() in IMAGE_TYPES)) return badRequest(c);
+      const name = photoFileName(file.name, Date.now());
+      await writeFile(join(photosDir, name), Buffer.from(await file.arrayBuffer()));
+      return c.json({ file: name }, 201);
+    },
+  );
   app.get('/photos/:file', async (c) => {
     const file = basename(c.req.param('file')); // empêche toute sortie du dossier photos
     const type = IMAGE_TYPES[extname(file).toLowerCase()];

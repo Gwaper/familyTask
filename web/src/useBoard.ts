@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Board } from '../../shared/types.ts';
-import { api } from './api.ts';
+import { api, Unauthorized } from './api.ts';
 
 const POLL_MS = 3000;
 
@@ -13,6 +13,7 @@ export type Mutate = (call: () => Promise<unknown>, optimistic?: (board: Board) 
  */
 export function useBoard() {
   const [board, setBoard] = useState<Board | null>(null);
+  const [locked, setLocked] = useState(false);
   const version = useRef(0);
   const paused = useRef(false);
 
@@ -20,9 +21,11 @@ export function useBoard() {
     const started = version.current;
     try {
       const next = await api.board();
+      setLocked(false);
       if (started === version.current) setBoard(next);
-    } catch {
-      // Serveur momentanément injoignable : on garde l'affichage actuel.
+    } catch (error) {
+      // Code famille requis ; sinon serveur momentanément injoignable : on garde l'affichage actuel.
+      if (error instanceof Unauthorized) setLocked(true);
     }
   }, []);
 
@@ -49,5 +52,5 @@ export function useBoard() {
     paused.current = value;
   }, []);
 
-  return { board, mutate, setPaused };
+  return { board, locked, refresh, mutate, setPaused };
 }

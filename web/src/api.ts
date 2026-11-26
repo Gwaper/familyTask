@@ -2,19 +2,32 @@ import type { Board, MemberFields, TaskFields, TaskInput } from '../../shared/ty
 
 export type Table = 'tasks' | 'members';
 
+/** Le serveur demande le code famille (cookie absent ou périmé). */
+export class Unauthorized extends Error {}
+
 async function request<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
+  const isForm = body instanceof FormData;
   const res = await fetch(path, {
     method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: body === undefined || isForm ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined || isForm ? body : JSON.stringify(body),
   });
+  if (res.status === 401) throw new Unauthorized();
   if (!res.ok) throw new Error(`${method} ${path} → ${res.status}`);
   return res.json() as Promise<T>;
 }
 
+const photoForm = (file: File): FormData => {
+  const form = new FormData();
+  form.append('file', file);
+  return form;
+};
+
 export const api = {
   board: () => request<Board>('GET', '/api/board'),
+  login: (code: string) => request('POST', '/api/login', { code }),
   photos: () => request<string[]>('GET', '/api/photos'),
+  uploadPhoto: (file: File) => request<{ file: string }>('POST', '/api/photos', photoForm(file)),
   createTask: (input: TaskInput) => request('POST', '/api/tasks', input),
   updateTask: (id: number, patch: Partial<TaskFields>) => request('PATCH', `/api/tasks/${id}`, patch),
   setTaskMembers: (id: number, memberIds: number[]) => request('PUT', `/api/tasks/${id}/members`, { memberIds }),

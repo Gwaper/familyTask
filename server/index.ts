@@ -24,7 +24,8 @@ const checkReset = () => {
 checkReset(); // rattrapage si le serveur était éteint à l'heure prévue
 const timer = setInterval(checkReset, 60_000);
 
-const app = createApp({ db, photosDir, staticDir: existsSync(staticDir) ? staticDir : undefined });
+const familyCode = process.env.FAMILY_CODE?.trim() || undefined;
+const app = createApp({ db, photosDir, familyCode, staticDir: existsSync(staticDir) ? staticDir : undefined });
 const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, () =>
   console.log(`Kanban familial sur http://0.0.0.0:${port} (données : ${dataDir}, remise à zéro : ${reset.time} ${reset.timeZone})`),
 );
