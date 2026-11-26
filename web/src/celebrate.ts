@@ -28,6 +28,8 @@ function playNotes(frequencies: number[], step: number): void {
 const C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5;
 
 export const playDoneSound = () => playNotes([C5, E5, G5], 0.09);
+/** Petit « tic » pendant le tirage au sort. */
+export const playTickSound = () => playNotes([C6], 0);
 export const playAllDoneSound = () => playNotes([C5, E5, G5, C6, G5, C6], 0.13);
 
 const CONFETTI_COLORS = ['#ffcf33', '#4f7cff', '#22a55a', '#ff8a3d', '#b061ff', '#2ec4d6'];

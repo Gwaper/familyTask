@@ -12,6 +12,7 @@ utilisé chaque jour comme rituel sur un écran partagé, y compris par des enfa
 - Accès : `FAMILY_CODE` (secret Fly) ; `POST /api/login` pose un cookie HttpOnly (empreinte SHA-256 du code). Sans code : accès libre.
 - Le conteneur démarre en root uniquement pour `chown` le volume, puis passe à `node` (`setpriv`).
 - En local sur Mac : `docker-compose.yml` publie simplement le port.
+- Tirage au sort : uniquement par le bouton 🎲 de la vue gestion (`POST /api/draw`), pas à la remise à zéro. Il remplace les attributions des tâches « À faire » (1 personne par rôle, équilibré : la moins chargée du rôle, égalités au hasard) ; l'attribution manuelle reste possible.
 - Ne jamais lancer de commande qui modifie l'hébergement (fly, secrets GitHub) : tout va dans le README.
 
 ## Stack
@@ -30,6 +31,7 @@ server/app.ts          routes Hono, fichiers statiques, /photos
 server/auth.ts         code famille (cookie, middleware)
 server/db.ts           schéma, seed, requêtes
 server/reset.ts        logique de remise à zéro (fonctions pures + application)
+server/draw.ts         tirage au sort équilibré (fonction pure)
 server/validate.ts     lecture des corps JSON
 web/src/i18n.ts        TOUS les textes de l'interface ({ fr, es })
 web/src/ritual/        vue rituel (par défaut)
@@ -38,11 +40,12 @@ web/src/manage/        vue gestion (/gestion ou /manage)
 
 ## Schéma SQLite
 ```sql
-members(id, name, color, avatar, position)
-tasks(id, name_fr, name_es DEFAULT '', icon, done 0/1, recurring 0/1, position)
+members(id, name, color, avatar, role 'adult'|'child' DEFAULT 'adult', position)
+tasks(id, name_fr, name_es DEFAULT '', icon, done 0/1, recurring 0/1, crew 'adult'|'child_adult'|'child' DEFAULT 'adult', position)
 task_members(task_id → tasks CASCADE, member_id → members CASCADE, PK(task_id, member_id))
 meta(key PK, value)   -- 'last_reset' = 'YYYY-MM-DD', 'seeded' = '1'
 ```
+Colonnes ajoutées aux bases existantes au démarrage (`addColumnIfMissing`).
 `avatar` / `icon` : un emoji, ou `photo:<fichier>` pour une photo de `/data/kanban/photos`.
 
 ## API
@@ -50,7 +53,7 @@ meta(key PK, value)   -- 'last_reset' = 'YYYY-MM-DD', 'seeded' = '1'
 - `POST /api/tasks`, `PATCH /api/tasks/:id` (y compris `done`), `DELETE /api/tasks/:id`
 - `PUT /api/tasks/:id/members` `{ memberIds }`, `PUT /api/tasks/order` `{ ids }`
 - `POST /api/members`, `PATCH /api/members/:id`, `DELETE /api/members/:id`, `PUT /api/members/order` `{ ids }`
-- `POST /api/reset` (remise à zéro manuelle), `GET /api/photos`, `POST /api/photos` (multipart `file`, 5 Mo), `GET /photos/:file`, `GET /api/health`
+- `POST /api/reset` (remise à zéro manuelle), `POST /api/draw` (tirage au sort), `GET /api/photos`, `POST /api/photos` (multipart `file`, 5 Mo), `GET /photos/:file`, `GET /api/health`
 - `POST /api/login` `{ code }` (seulement si `FAMILY_CODE` est défini ; tout le reste de `/api` et `/photos` répond 401 sans cookie, sauf `/api/health`)
 
 ## Remise à zéro

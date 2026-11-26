@@ -60,6 +60,17 @@ img.picture { object-fit: cover; border-radius: 18%; }
 .column-done .column-head { background: var(--done); }
 .column-icon { font-size: 48px; }
 
+/* Tirage au sort : le dé tourne et les avatars des cartes « À faire » sautillent. */
+.draw-button {
+  margin-left: auto; width: 80px; height: 80px; border: none; border-radius: 50%; flex: none;
+  background: #fff; font-size: 44px; display: grid; place-items: center; box-shadow: var(--shadow);
+}
+.rolling .draw-button { animation: spin 0.6s linear infinite; }
+.rolling .card:not(.card-done) .card-avatars { animation: hop 0.3s ease-in-out infinite alternate; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes hop { to { transform: translateY(-8px) scale(1.08); } }
+
 .column-cards {
   flex: 1; overflow-y: auto; padding: 16px;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); align-content: start; gap: 16px;
@@ -188,6 +199,13 @@ img.picture { object-fit: cover; border-radius: 18%; }
 .picker-item { height: 60px; border-radius: 12px; border: 3px solid transparent; background: #f6f7fa; display: grid; place-items: center; }
 .picker-item.selected { border-color: var(--todo); background: var(--todo-bg); }
 .image-picker .upload-button { display: inline-flex; flex-direction: row; margin: 6px 0; cursor: pointer; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.choice {
+  min-height: 80px; min-width: 120px; padding: 8px 14px; border-radius: 12px; border: 3px solid #c9cfdb; background: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+}
+.choice.selected { border-color: var(--todo); background: var(--todo-bg); font-weight: 700; }
+.choice-emoji { font-size: 32px; }
 .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .swatch { width: 48px; height: 48px; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 0 0 2px #c9cfdb; }
 .swatch.selected { box-shadow: 0 0 0 4px var(--ink); }

@@ -1,4 +1,4 @@
-import type { Board, MemberFields, TaskFields, TaskInput } from '../../shared/types.ts';
+import type { Board, MemberFields, MemberInput, TaskFields, TaskInput } from '../../shared/types.ts';
 
 export type Table = 'tasks' | 'members';
 
@@ -31,9 +31,10 @@ export const api = {
   createTask: (input: TaskInput) => request('POST', '/api/tasks', input),
   updateTask: (id: number, patch: Partial<TaskFields>) => request('PATCH', `/api/tasks/${id}`, patch),
   setTaskMembers: (id: number, memberIds: number[]) => request('PUT', `/api/tasks/${id}/members`, { memberIds }),
-  createMember: (input: MemberFields) => request('POST', '/api/members', input),
+  createMember: (input: MemberInput) => request('POST', '/api/members', input),
   updateMember: (id: number, patch: Partial<MemberFields>) => request('PATCH', `/api/members/${id}`, patch),
   remove: (table: Table, id: number) => request('DELETE', `/api/${table}/${id}`),
   reorder: (table: Table, ids: number[]) => request('PUT', `/api/${table}/order`, { ids }),
   reset: () => request('POST', '/api/reset'),
+  draw: () => request('POST', '/api/draw'),
 };

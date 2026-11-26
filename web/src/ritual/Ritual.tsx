@@ -1,14 +1,15 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MANAGE_PATH } from '../routes.ts';
 import {
   DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core';
+import { drawAssignments } from '../../../shared/draw.ts';
 import type { Board, Task } from '../../../shared/types.ts';
 import { api } from '../api.ts';
 import { allDone, assignedMembers, patchTask, toggleId } from '../board.ts';
-import { launchConfetti, playAllDoneSound, playDoneSound } from '../celebrate.ts';
-import { t } from '../i18n.ts';
+import { launchConfetti, playAllDoneSound, playDoneSound, playTickSound } from '../celebrate.ts';
+import { both, t } from '../i18n.ts';
 import { say } from '../speech.ts';
 import type { Mutate } from '../useBoard.ts';
 import { AvatarPicker } from './AvatarPicker.tsx';
@@ -23,12 +24,29 @@ interface Props {
 
 /** Après un glisser, le navigateur peut émettre un clic : on l'ignore pendant ce délai. */
 const CLICK_AFTER_DRAG_MS = 300;
+/** Durée minimale de l'animation du tirage au sort, et rythme des avatars qui défilent. */
+const ROLL_MS = 1800;
+const ROLL_TICK_MS = 150;
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function Ritual({ board, mutate, setPaused }: Props) {
   const [picker, setPicker] = useState<{ taskId: number; ask: boolean } | null>(null);
   const [celebrated, setCelebrated] = useState<number | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const lastDragEnd = useRef(0);
+  const [rolling, setRolling] = useState(false);
+  /** Attributions affichées pendant l'animation (tirages provisoires, côté écran seulement). */
+  const [preview, setPreview] = useState<Map<number, number[]> | null>(null);
+
+  useEffect(() => {
+    if (!rolling) return setPreview(null);
+    const timer = setInterval(() => {
+      setPreview(drawAssignments(board));
+      playTickSound();
+    }, ROLL_TICK_MS);
+    return () => clearInterval(timer);
+  }, [rolling, board]);
 
   // Léger délai d'appui au doigt pour laisser le défilement fonctionner.
   const sensors = useSensors(
@@ -54,6 +72,16 @@ export function Ritual({ board, mutate, setPaused }: Props) {
       setPicker({ taskId: task.id, ask: true });
       say(t.whoDidIt);
     }
+  }
+
+  /** Le vrai tirage est fait par le serveur ; l'animation dure au moins ROLL_MS. */
+  function drawTasks() {
+    if (rolling) return;
+    setRolling(true);
+    void mutate(() => Promise.all([api.draw(), wait(ROLL_MS)])).finally(() => {
+      setRolling(false);
+      playDoneSound();
+    });
   }
 
   function toggleMember(task: Task, memberId: number) {
@@ -85,12 +113,19 @@ export function Ritual({ board, mutate, setPaused }: Props) {
   const renderColumn = (kind: ColumnKind) => {
     const tasks = board.tasks.filter((task) => task.done === (kind === 'done'));
     return (
-      <Column kind={kind}>
+      <Column
+        kind={kind}
+        action={kind === 'todo' && (
+          <button className="draw-button" onClick={drawTasks} disabled={rolling} aria-label={both(t.draw)} title={both(t.draw)}>
+            🎲
+          </button>
+        )}
+      >
         {tasks.map((task) => (
           <TaskCard
             key={task.id}
             task={task}
-            members={assignedMembers(board, task)}
+            members={assignedMembers(board, { ...task, memberIds: preview?.get(task.id) ?? task.memberIds })}
             celebrate={celebrated === task.id}
             onOpen={() => openPicker(task)}
             onMove={() => setDone(task, !task.done)}
@@ -107,7 +142,7 @@ export function Ritual({ board, mutate, setPaused }: Props) {
   const pickerTask = picker ? findTask(picker.taskId) : undefined;
 
   return (
-    <main className="ritual">
+    <main className={rolling ? 'ritual rolling' : 'ritual'}>
       <a className="manage-link" href={MANAGE_PATH} aria-label={t.manage.fr}>⚙️</a>
       <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={endDrag}>
         <div className="columns">
