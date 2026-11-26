@@ -1,11 +1,11 @@
-import type { CSSProperties, MouseEvent } from 'react';
+import type { MouseEvent } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import type { Member, Task } from '../../../shared/types.ts';
 import { both, t } from '../i18n.ts';
 import { Avatar, PictureView } from '../Picture.tsx';
 import { say, useCanSpeak } from '../speech.ts';
-import { ArrowIcon, CheckIcon, PersonIcon, SpeakIcon } from './icons.tsx';
-import { postIt } from './postit.ts';
+import { ArrowIcon, CheckIcon, PersonIcon, SpeakIcon } from '../icons.tsx';
+import { postItStyle } from './postit.ts';
 
 interface Props {
   task: Task;
@@ -13,12 +13,6 @@ interface Props {
   celebrate: boolean;
   onOpen: () => void;
   onMove: () => void;
-}
-
-/** Couleur et inclinaison du post-it, passées au CSS par des variables. */
-export function postItStyle(taskId: number): CSSProperties {
-  const { paper, tilt, tape } = postIt(taskId);
-  return { '--paper': paper, '--tilt': `${tilt}deg`, '--tape': `${tape}deg` } as CSSProperties;
 }
 
 /** Contenu visuel d'une carte : partagé entre la carte et sa copie pendant le glisser. */

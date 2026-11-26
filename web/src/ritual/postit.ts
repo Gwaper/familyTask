@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 /** Papiers pastel des post-it. */
 export const PAPERS = ['#fff3a8', '#ffd9e6', '#d4e8ff', '#d8f2e1', '#ffe6c7', '#e6dcff'] as const;
 /** Inclinaisons du post-it et de son scotch, en degrés. */
@@ -14,4 +16,10 @@ export interface PostIt {
 export function postIt(taskId: number): PostIt {
   const pick = <T>(list: readonly T[], step: number) => list[Math.abs(taskId * step) % list.length];
   return { paper: pick(PAPERS, 1), tilt: pick(TILTS, 3), tape: pick(TAPES, 7) };
+}
+
+/** Couleur et inclinaison du post-it, passées au CSS par des variables. */
+export function postItStyle(taskId: number): CSSProperties {
+  const { paper, tilt, tape } = postIt(taskId);
+  return { '--paper': paper, '--tilt': `${tilt}deg`, '--tape': `${tape}deg` } as CSSProperties;
 }

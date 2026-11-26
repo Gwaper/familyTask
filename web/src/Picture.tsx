@@ -13,10 +13,13 @@ export function PictureView({ value, size }: { value: Picture; size: number }) {
   );
 }
 
-/** Avatar rond sur la couleur du membre. */
+/** Version pastel d'une couleur de membre (la couleur choisie reste stockée telle quelle). */
+export const softColor = (color: string) => `color-mix(in srgb, ${color} 28%, white)`;
+
+/** Avatar rond sur la couleur (adoucie) du membre. */
 export function Avatar({ member, size }: { member: Member; size: number }) {
   return (
-    <span className="avatar" style={{ width: size, height: size, background: member.color }} title={member.name}>
+    <span className="avatar" style={{ width: size, height: size, background: softColor(member.color) }} title={member.name}>
       <PictureView value={member.avatar} size={member.avatar.startsWith(PHOTO_PREFIX) ? size : size * 0.75} />
     </span>
   );
