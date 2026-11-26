@@ -1,12 +1,12 @@
 # Déploiement Fly.io (voir README § Déploiement). Le nom de l'app est choisi au `fly launch`.
-app = "family-kanban"
+app = "familytask"
 primary_region = "cdg"
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
-  PORT = "8090"
+  PORT = "8080"
   TZ = "Europe/Paris"
   RESET_TIME = "03:00"
 
@@ -18,7 +18,7 @@ primary_region = "cdg"
 # La machine s'arrête quand personne n'utilise l'app et redémarre à la première requête ;
 # la remise à zéro manquée est rattrapée au démarrage.
 [http_service]
-  internal_port = 8090
+  internal_port = 8080
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true

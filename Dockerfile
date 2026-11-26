@@ -9,7 +9,7 @@ RUN npm run build && npm test && npm prune --omit=dev
 # --- Exécution : Node lance directement le TypeScript du serveur ---
 FROM node:24-slim
 ENV NODE_ENV=production \
-    PORT=8090 \
+    PORT=8080 \
     RESET_TIME=03:00 \
     TZ=Europe/Paris \
     DATA_DIR=/data/kanban \

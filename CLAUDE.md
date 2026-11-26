@@ -6,7 +6,7 @@ utilisé chaque jour comme rituel sur un écran partagé, y compris par des enfa
 ## Décisions validées
 - Appareils : tablette Android, iPad, TV, PC tactile → la flèche sur chaque carte est l'alternative au drag & drop.
 - Remise à zéro quotidienne : `RESET_TIME=03:00`, fuseau `Europe/Paris`.
-- Port : `PORT=8090`. Données dans `/data/kanban` (`kanban.db` + `photos/`).
+- Port : `PORT=8090` en local, `8080` dans l'image Docker (port attendu par Fly.io). Données dans `/data/kanban` (`kanban.db` + `photos/`).
 - Hébergement : Fly.io (`fly.toml`, région `cdg`, volume `kanban_data`, machine arrêtée hors usage). Comparatif : `docs/hebergement.md`.
 - Déploiement : `.github/workflows/deploy.yml` (tests sur chaque PR, tests + `flyctl deploy` sur chaque push sur `main`, secret `FLY_API_TOKEN`).
 - Accès : `FAMILY_CODE` (secret Fly) ; `POST /api/login` pose un cookie HttpOnly (empreinte SHA-256 du code). Sans code : accès libre.
