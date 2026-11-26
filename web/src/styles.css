@@ -29,77 +29,125 @@ img.picture { object-fit: cover; border-radius: 18%; }
   border-radius: 50%; overflow: hidden; border: 3px solid #fff; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
 }
 .avatar img.picture { border-radius: 0; }
-.avatar-empty { background: #eceff4; border-style: dashed; border-color: #b8bfcc; opacity: 0.8; font-size: 30px; }
 
 .loading { display: grid; place-items: center; height: 100%; font-size: 96px; animation: pop 1.2s infinite alternate; }
 
-/* ---------- Vue rituel ---------- */
+/* ---------- Vue rituel : post-it sur un tableau en liège ---------- */
 
-.ritual { height: 100%; padding: 16px; position: relative; user-select: none; -webkit-user-select: none; }
-
-.manage-link {
-  position: absolute; top: 30px; right: 34px; z-index: 5;
-  font-size: 30px; text-decoration: none; opacity: 0.6; padding: 8px;
+.ritual {
+  --cork-shadow: rgba(60, 35, 10, 0.25);
+  --wood: #8a5a2b;
+  --todo-ink: #3138b8;
+  --done-ink: #0f6a43;
+  --label: #fdfcf8;
+  height: 100%; padding: 22px; position: relative; user-select: none; -webkit-user-select: none;
+  background-color: #c8975f;
+  background-image: radial-gradient(#b5834d 1.2px, transparent 1.6px), radial-gradient(#d9ab73 1px, transparent 1.4px);
+  background-size: 14px 14px, 22px 22px;
+  background-position: 0 0, 7px 9px;
+  border: 18px solid var(--wood);
 }
 
-.columns { display: flex; gap: 16px; height: 100%; }
-
-.column {
-  flex: 1; min-width: 0; display: flex; flex-direction: column;
-  border-radius: var(--radius); border: 5px solid; transition: transform 0.15s, box-shadow 0.15s;
+.columns { display: flex; gap: 22px; height: 100%; }
+.columns-separator {
+  flex: none; width: 6px; border-radius: 3px;
+  background: repeating-linear-gradient(var(--wood) 0 18px, transparent 18px 30px);
 }
-.column-todo { background: var(--todo-bg); border-color: var(--todo); }
-.column-done { background: var(--done-bg); border-color: var(--done); }
-.column-over { transform: scale(1.01); box-shadow: 0 0 0 8px rgba(255, 207, 51, 0.7); }
 
-.column-head {
-  display: flex; align-items: center; gap: 12px; margin: 0; padding: 12px 20px;
-  font-size: 28px; font-weight: 800; color: #fff;
-}
-.column-todo .column-head { background: var(--todo); }
-.column-done .column-head { background: var(--done); }
-.column-icon { font-size: 48px; }
+.column { flex: 1; min-width: 0; display: flex; flex-direction: column; border-radius: 24px; transition: background 0.15s, box-shadow 0.15s; }
+.column-over { background: rgba(255, 250, 235, 0.18); box-shadow: 0 0 0 4px rgba(255, 250, 235, 0.6); }
 
-/* Tirage au sort : le dé tourne et les avatars des cartes « À faire » sautillent. */
-.draw-button {
-  margin-left: auto; width: 80px; height: 80px; border: none; border-radius: 50%; flex: none;
-  background: #fff; font-size: 44px; display: grid; place-items: center; box-shadow: var(--shadow);
+/* Étiquette centrée ; le dé (ou la roue de gestion) est posé à droite. */
+.column-head { position: relative; display: flex; justify-content: center; margin: 0; padding: 12px 88px; }
+.column-label {
+  display: inline-flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 26px 0 18px;
+  border-radius: 999px; background: var(--label); box-shadow: 0 4px 12px var(--cork-shadow);
+  font-size: 26px; font-weight: 650; text-align: center;
 }
-.rolling .draw-button { animation: spin 0.6s linear infinite; }
+.column-icon { font-size: 30px; }
+.column-todo .column-fr { color: var(--todo-ink); }
+.column-done .column-fr { color: var(--done-ink); }
+.column-es { font-weight: 500; color: #5b6170; }
+.column-action { position: absolute; right: 0; top: 0; }
+
+.draw-button, .manage-link {
+  width: 80px; height: 80px; border: none; padding: 0; background: transparent;
+  display: grid; place-items: center; text-decoration: none;
+}
+.draw-button:disabled { opacity: 1; }
+/* Dé en relief : face éclairée en haut à gauche, tranche visible et ombre portée. */
+.die {
+  width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center; rotate: -8deg;
+  background: linear-gradient(145deg, #ffffff 0%, #f7f1e4 55%, #e9dcc3 100%);
+  box-shadow:
+    inset 2px 2px 3px rgba(255, 255, 255, 0.9), inset -3px -4px 6px rgba(120, 85, 40, 0.22),
+    4px 5px 0 #d6c4a2, 5px 7px 0 #bfa67c, 8px 14px 16px rgba(40, 22, 6, 0.5);
+}
+.manage-dot {
+  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(253, 252, 248, 0.7); color: #6b5a44;
+}
+
+/* Tirage au sort : le dé tourne et les avatars des post-it « À faire » sautillent. */
+.rolling .die { animation: spin 0.6s linear infinite; }
 .rolling .card:not(.card-done) .card-avatars { animation: hop 0.3s ease-in-out infinite alternate; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes hop { to { transform: translateY(-8px) scale(1.08); } }
 
 .column-cards {
-  flex: 1; overflow-y: auto; padding: 16px;
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); align-content: start; gap: 16px;
+  flex: 1; overflow-y: auto; padding: 22px 12px 28px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-content: start; gap: 28px 24px;
 }
 
+/* Post-it carré : --paper, --tilt et --tape viennent de postIt(). `rotate` reste indépendant
+   de `transform`, ce qui laisse les animations (pop, glisser) s'ajouter à l'inclinaison. */
 .card {
-  position: relative; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
-  border: 4px solid transparent; touch-action: manipulation; cursor: grab;
+  position: relative; aspect-ratio: 1 / 1; rotate: var(--tilt);
+  background-color: var(--paper);
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 35%, rgba(60, 35, 10, 0) 70%, rgba(60, 35, 10, 0.09) 100%);
+  border-radius: 3px 3px 14px 3px;
+  box-shadow: 0 2px 3px rgba(60, 35, 10, 0.28), 0 10px 14px -2px rgba(60, 35, 10, 0.32), 0 26px 34px -8px rgba(40, 22, 6, 0.55);
+  touch-action: manipulation; cursor: grab;
 }
-.card-done { border-color: var(--done); }
+/* Scotch */
+.card::before {
+  content: ''; position: absolute; top: -14px; left: 50%; width: 112px; height: 30px; margin-left: -56px;
+  background: rgba(250, 244, 226, 0.72); box-shadow: 0 1px 2px rgba(60, 35, 10, 0.15); rotate: var(--tape);
+}
 .card-dragging { opacity: 0.3; }
-.card-overlay { cursor: grabbing; transform: rotate(-3deg) scale(1.05); box-shadow: 0 16px 30px rgba(0, 0, 0, 0.25); }
+.card-overlay { cursor: grabbing; rotate: -4deg; transform: scale(1.05); }
 .card-pop { animation: pop 0.6s ease-out; }
 
-.card-main {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 20px 16px 104px; text-align: center; min-height: 260px;
+.card-main { height: 100%; display: flex; flex-direction: column; padding: 22px 6px 4px 14px; text-align: center; }
+.card-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding-top: 18px; }
+.name-fr { font-size: 22px; font-weight: 650; letter-spacing: -0.3px; line-height: 1.15; }
+.name-es { font-size: 18px; color: #4b5160; line-height: 1.15; }
+.card-foot { display: flex; align-items: center; justify-content: space-between; }
+.card-avatars { display: flex; align-items: center; }
+.card-avatars .avatar { margin-right: -6px; box-shadow: none; }
+.card-avatars .avatar-empty {
+  width: 44px; height: 44px; border: 2px dashed rgba(75, 81, 96, 0.5);
+  background: rgba(255, 255, 255, 0.45); color: rgba(75, 81, 96, 0.7);
 }
-.name-fr { font-size: 24px; font-weight: 800; line-height: 1.15; }
-.name-es { font-size: 21px; font-weight: 600; color: var(--muted); font-style: italic; line-height: 1.15; }
-.card-avatars { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 6px; }
 
-.card-speak, .card-move {
-  position: absolute; width: 80px; height: 80px; border: none; border-radius: 50%;
-  display: grid; place-items: center; font-size: 38px; box-shadow: var(--shadow);
+.card-speak {
+  position: absolute; top: 14px; left: 10px; width: 46px; height: 46px; border: none; border-radius: 50%; padding: 0;
+  display: grid; place-items: center; background: rgba(255, 255, 255, 0.6); color: #6b5a44;
 }
-.card-speak { top: -6px; left: -6px; width: 64px; height: 64px; font-size: 30px; background: #fff2c4; }
-.card-move { bottom: 12px; right: 12px; background: var(--done); }
-.card-done .card-move { background: var(--todo); }
+/* Zone tactile de 80 px autour d'un rond visible plus petit. */
+.card-move { flex: none; width: 80px; height: 80px; border: none; padding: 0; background: transparent; display: grid; place-items: center; }
+.card-move-dot {
+  width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  background: #bfe8cf; color: #2a7a52; box-shadow: 0 3px 8px rgba(42, 122, 82, 0.25);
+}
+.card-done .card-move-dot { background: #dcdcfb; color: #4a50b8; box-shadow: 0 3px 8px rgba(74, 80, 184, 0.22); }
+.card-check {
+  position: absolute; top: 16px; right: 14px; width: 38px; height: 38px; border-radius: 50%; rotate: -10deg;
+  display: grid; place-items: center; border: 3px solid rgba(255, 255, 255, 0.9);
+  background: #2a9d68; color: #fff; box-shadow: 0 2px 6px rgba(42, 122, 82, 0.3);
+}
 
 .all-done { grid-column: 1 / -1; text-align: center; font-size: 140px; padding-top: 40px; animation: pop 1s ease-out; }
 
@@ -141,8 +189,11 @@ img.picture { object-fit: cover; border-radius: 18%; }
 
 /* Écran étroit (téléphone en portrait) : colonnes empilées. */
 @media (max-width: 700px) {
-  .ritual { height: auto; min-height: 100%; }
+  .ritual { height: auto; min-height: 100%; padding: 12px; border-width: 10px; }
   .columns { flex-direction: column; height: auto; }
+  .columns-separator { width: auto; height: 6px; background: repeating-linear-gradient(90deg, var(--wood) 0 18px, transparent 18px 30px); }
+  .column-head { padding: 12px 80px 12px 0; justify-content: flex-start; }
+  .column-label { font-size: 22px; }
   .column-cards { overflow: visible; }
 }
 
