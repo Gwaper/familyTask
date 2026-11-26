@@ -13,7 +13,8 @@ import { both, t } from '../i18n.ts';
 import { say } from '../speech.ts';
 import type { Mutate } from '../useBoard.ts';
 import { AvatarPicker } from './AvatarPicker.tsx';
-import { CardContent, TaskCard } from './TaskCard.tsx';
+import { DieIcon, GearIcon } from './icons.tsx';
+import { CardContent, postItStyle, TaskCard } from './TaskCard.tsx';
 import { Column, type ColumnKind } from './Column.tsx';
 
 interface Props {
@@ -115,10 +116,14 @@ export function Ritual({ board, mutate, setPaused }: Props) {
     return (
       <Column
         kind={kind}
-        action={kind === 'todo' && (
+        action={kind === 'todo' ? (
           <button className="draw-button" onClick={drawTasks} disabled={rolling} aria-label={both(t.draw)} title={both(t.draw)}>
-            🎲
+            <span className="die"><DieIcon /></span>
           </button>
+        ) : (
+          <a className="manage-link" href={MANAGE_PATH} aria-label={both(t.manage)} title={both(t.manage)}>
+            <span className="manage-dot"><GearIcon /></span>
+          </a>
         )}
       >
         {tasks.map((task) => (
@@ -143,15 +148,15 @@ export function Ritual({ board, mutate, setPaused }: Props) {
 
   return (
     <main className={rolling ? 'ritual rolling' : 'ritual'}>
-      <a className="manage-link" href={MANAGE_PATH} aria-label={t.manage.fr}>⚙️</a>
       <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={endDrag}>
         <div className="columns">
           {renderColumn('todo')}
+          <div className="columns-separator" aria-hidden="true" />
           {renderColumn('done')}
         </div>
         <DragOverlay>
           {dragged && (
-            <div className="card card-overlay">
+            <div className={dragged.done ? 'card card-done card-overlay' : 'card card-overlay'} style={postItStyle(dragged.id)}>
               <CardContent task={dragged} members={assignedMembers(board, dragged)} onOpen={() => {}} onMove={() => {}} />
             </div>
           )}
