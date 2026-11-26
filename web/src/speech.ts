@@ -95,3 +95,4 @@ export function say(text: Bilingual): void {
 /** true si l'appareil a au moins une voix (sinon on masque les haut-parleurs). */
 export const useCanSpeak = (): boolean =>
   useSyncExternalStore(subscribe, () => voices.length > 0, () => false);
+

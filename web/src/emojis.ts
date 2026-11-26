@@ -6,9 +6,14 @@ export const TASK_EMOJIS = [
   '🧽', '🪣', '🚽', '🖍️', '✏️', '🎨', '🎹', '⚽', '🚲', '🧩', '🪀', '🚗', '🛒', '💤',
 ];
 
+/** Teints de peau Unicode : sur Apple, ils changent aussi la couleur des cheveux (🏽 = châtain). */
+const SKIN_TONES = ['🏻', '🏼', '🏽', '🏾', '🏿'];
+const PEOPLE = ['👨', '👩', '🧔', '👴', '👵', '👦', '👧', '🧒', '👶'];
+const withSkinTones = (emoji: string) => [emoji, ...SKIN_TONES.map((tone) => emoji + tone)];
+
 export const MEMBER_EMOJIS = [
-  '👨', '👩', '🧔', '👱‍♀️', '👴', '👵', '👦', '👧', '🧒', '👶', '🐻', '🦊', '🐱', '🐶',
-  '🐰', '🐼', '🐨', '🦁', '🐯', '🐸', '🐵', '🦄', '🐙', '🦖', '🐢', '🐝', '🦋', '🌟',
+  ...PEOPLE.flatMap(withSkinTones), '👱‍♀️',
+  '🐻', '🦊', '🐱', '🐶', '🐰', '🐼', '🐨', '🦁', '🐯', '🐸', '🐵', '🦄', '🐙', '🦖', '🐢', '🐝', '🦋', '🌟',
 ];
 
 export const MEMBER_COLORS = [

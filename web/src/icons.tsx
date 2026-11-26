@@ -71,3 +71,40 @@ export function GearIcon() {
     </svg>
   );
 }
+
+export function PencilIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" {...stroke} strokeWidth="2.2">
+      <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" />
+      <path d="M13.5 6.5l4 4" />
+    </svg>
+  );
+}
+
+export function TrashIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" {...stroke} strokeWidth="2.2">
+      <path d="M5 7h14" />
+      <path d="M10 7V5h4v2" />
+      <path d="M7 7l1 12h8l1-12" />
+    </svg>
+  );
+}
+
+export function PlusIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" {...stroke} strokeWidth="2.8">
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+export function RefreshIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...stroke} strokeWidth="2.4">
+      <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+      <path d="M20 5v6h-6" />
+    </svg>
+  );
+}

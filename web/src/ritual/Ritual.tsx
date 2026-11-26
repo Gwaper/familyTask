@@ -13,8 +13,9 @@ import { both, t } from '../i18n.ts';
 import { say } from '../speech.ts';
 import type { Mutate } from '../useBoard.ts';
 import { AvatarPicker } from './AvatarPicker.tsx';
-import { DieIcon, GearIcon } from './icons.tsx';
-import { CardContent, postItStyle, TaskCard } from './TaskCard.tsx';
+import { DieIcon, GearIcon } from '../icons.tsx';
+import { postItStyle } from './postit.ts';
+import { CardContent, TaskCard } from './TaskCard.tsx';
 import { Column, type ColumnKind } from './Column.tsx';
 
 interface Props {

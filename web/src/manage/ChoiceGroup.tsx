@@ -1,3 +1,5 @@
+import { CheckIcon } from '../icons.tsx';
+import { Bi } from '../Bi.tsx';
 import { both, type Bilingual } from '../i18n.ts';
 import type { Choice } from './roles.ts';
 
@@ -8,11 +10,11 @@ interface Props<K extends string> {
   onChange: (value: K) => void;
 }
 
-/** Choix unique parmi quelques gros boutons (emoji + libellé bilingue). */
+/** Choix unique parmi quelques grandes cartes (emoji + libellé bilingue). */
 export function ChoiceGroup<K extends string>({ title, choices, value, onChange }: Props<K>) {
   return (
-    <div>
-      {both(title)}
+    <div className="field">
+      <span className="field-label">{both(title)}</span>
       <div className="choices">
         {(Object.entries(choices) as [K, Choice][]).map(([key, { emoji, label }]) => (
           <button
@@ -23,7 +25,8 @@ export function ChoiceGroup<K extends string>({ title, choices, value, onChange 
             onClick={() => onChange(key)}
           >
             <span className="choice-emoji">{emoji}</span>
-            {both(label)}
+            <Bi text={label} />
+            {key === value && <span className="choice-check" aria-hidden="true"><CheckIcon /></span>}
           </button>
         ))}
       </div>

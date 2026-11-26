@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { api } from './api.ts';
+import { Bi } from './Bi.tsx';
 import { both, t } from './i18n.ts';
 
 /** Saisie du code famille, une seule fois par appareil (cookie longue durée). */
@@ -18,14 +19,14 @@ export function Login({ onSuccess }: { onSuccess: () => Promise<void> }) {
   };
 
   return (
-    <form className="login edit-form" onSubmit={submit}>
+    <form className="login" onSubmit={submit}>
       <div className="login-icon" aria-hidden="true">🏠🔑</div>
       <label>
         {both(t.familyCode)}
         <input type="password" autoComplete="current-password" autoFocus value={code} onChange={(e) => setCode(e.target.value)} />
       </label>
       {wrong && <p className="hint">{both(t.wrongCode)}</p>}
-      <button type="submit" className="primary login-button" disabled={!code.trim()}>{both(t.enter)}</button>
+      <button type="submit" className="primary login-button" disabled={!code.trim()}><Bi text={t.enter} /></button>
     </form>
   );
 }
