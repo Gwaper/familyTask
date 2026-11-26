@@ -3,11 +3,12 @@ import { basename, extname, join } from 'node:path';
 import { Hono, type Context } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { bodyLimit } from 'hono/body-limit';
-import type { MemberFields, TaskInput } from '../shared/types.ts';
+import type { MemberInput, TaskInput } from '../shared/types.ts';
 import {
-  createMember, createTask, deleteRow, getBoard, reorder, resetRecurringTasks,
+  applyDraw, createMember, createTask, deleteRow, getBoard, reorder, resetRecurringTasks,
   setTaskMembers, updateMember, updateTask, type Db, type OrderedTable,
 } from './db.ts';
+import { drawAssignments } from '../shared/draw.ts';
 import { requireFamily, sameToken, setFamilyCookie, tokenFor } from './auth.ts';
 import { readCode, readIds, readMember, readTask } from './validate.ts';
 
@@ -86,8 +87,8 @@ export function createApp({ db, photosDir, staticDir, familyCode }: AppOptions):
   app.post('/api/members', async (c) => {
     const fields = readMember(await jsonBody(c), true);
     if (!fields) return badRequest(c);
-    // readMember(…, true) garantit la présence de tous les champs.
-    return c.json({ id: createMember(db, fields as MemberFields) }, 201);
+    // readMember(…, true) garantit la présence de name, color et avatar.
+    return c.json({ id: createMember(db, fields as MemberInput) }, 201);
   });
   app.patch('/api/members/:id', async (c) => {
     const fields = readMember(await jsonBody(c), false);
@@ -97,6 +98,10 @@ export function createApp({ db, photosDir, staticDir, familyCode }: AppOptions):
 
   app.post('/api/reset', (c) => {
     resetRecurringTasks(db);
+    return ok(c);
+  });
+  app.post('/api/draw', (c) => {
+    applyDraw(db, drawAssignments(getBoard(db)));
     return ok(c);
   });
 

@@ -5,6 +5,7 @@ import { Avatar, PictureView } from '../Picture.tsx';
 import type { Mutate } from '../useBoard.ts';
 import { ManagedList } from './ManagedList.tsx';
 import { MemberForm } from './MemberForm.tsx';
+import { CREW_CHOICES, ROLE_CHOICES } from './roles.ts';
 import { TaskForm } from './TaskForm.tsx';
 
 export function Manage({ board, mutate }: { board: Board; mutate: Mutate }) {
@@ -36,6 +37,7 @@ export function Manage({ board, mutate }: { board: Board; mutate: Mutate }) {
               <strong>{task.nameFr}</strong>
               {task.nameEs && <span>{task.nameEs}</span>}
             </span>
+            <span title={both(CREW_CHOICES[task.crew].label)}>{CREW_CHOICES[task.crew].emoji}</span>
             {task.recurring && <span title={both(t.recurring)}>🔁</span>}
           </>
         )}
@@ -59,6 +61,7 @@ export function Manage({ board, mutate }: { board: Board; mutate: Mutate }) {
           <>
             <Avatar member={member} size={44} />
             <strong className="manage-names">{member.name}</strong>
+            <span title={both(ROLE_CHOICES[member.role].label)}>{ROLE_CHOICES[member.role].emoji}</span>
           </>
         )}
         renderForm={(member, close) => (

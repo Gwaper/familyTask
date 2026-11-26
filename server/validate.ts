@@ -1,4 +1,4 @@
-import type { MemberFields, TaskFields } from '../shared/types.ts';
+import { MEMBER_ROLES, TASK_CREWS, type MemberFields, type TaskFields } from '../shared/types.ts';
 
 type FieldKind = 'string' | 'boolean';
 type Spec<T> = { [K in keyof T]: FieldKind };
@@ -22,18 +22,24 @@ function readFields<T>(body: unknown, spec: Spec<T>): Partial<T> | null {
   return Object.fromEntries(entries) as Partial<T>;
 }
 
-const TASK_SPEC: Spec<TaskFields> = { nameFr: 'string', nameEs: 'string', icon: 'string', recurring: 'boolean', done: 'boolean' };
-const MEMBER_SPEC: Spec<MemberFields> = { name: 'string', color: 'string', avatar: 'string' };
+const TASK_SPEC: Spec<TaskFields> = {
+  nameFr: 'string', nameEs: 'string', icon: 'string', recurring: 'boolean', done: 'boolean', crew: 'string',
+};
+const MEMBER_SPEC: Spec<MemberFields> = { name: 'string', color: 'string', avatar: 'string', role: 'string' };
 
 /** Un champ obligatoire fourni doit être non vide (ex. on ne peut pas vider le nom français). */
 const requiredNotEmpty = <T>(fields: Partial<T> | null, keys: (keyof T)[], creating: boolean): Partial<T> | null =>
   fields && keys.every((k) => (fields[k] === undefined ? !creating : fields[k] !== '')) ? fields : null;
 
+/** Un champ à valeurs fixes fourni doit faire partie des valeurs autorisées. */
+const oneOf = <T>(fields: Partial<T> | null, key: keyof T, allowed: readonly unknown[]): Partial<T> | null =>
+  fields && (fields[key] === undefined || allowed.includes(fields[key])) ? fields : null;
+
 export const readTask = (body: unknown, creating: boolean) =>
-  requiredNotEmpty(readFields(body, TASK_SPEC), ['nameFr', 'icon'], creating);
+  oneOf(requiredNotEmpty(readFields(body, TASK_SPEC), ['nameFr', 'icon'], creating), 'crew', TASK_CREWS);
 
 export const readMember = (body: unknown, creating: boolean) =>
-  requiredNotEmpty(readFields(body, MEMBER_SPEC), ['name', 'color', 'avatar'], creating);
+  oneOf(requiredNotEmpty(readFields(body, MEMBER_SPEC), ['name', 'color', 'avatar'], creating), 'role', MEMBER_ROLES);
 
 /** Lit une liste d'ids entiers sous la clé donnée, ou null. */
 export function readIds(body: unknown, key: string): number[] | null {

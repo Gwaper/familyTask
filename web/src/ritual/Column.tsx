@@ -9,7 +9,8 @@ const HEADER = {
   done: { icon: '🌟', text: t.done },
 };
 
-export function Column({ kind, children }: { kind: ColumnKind; children: ReactNode }) {
+/** `action` : bouton facultatif affiché à droite de l'en-tête. */
+export function Column({ kind, action, children }: { kind: ColumnKind; action?: ReactNode; children: ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: kind });
   const { icon, text } = HEADER[kind];
   return (
@@ -17,6 +18,7 @@ export function Column({ kind, children }: { kind: ColumnKind; children: ReactNo
       <h2 className="column-head">
         <span className="column-icon" aria-hidden="true">{icon}</span>
         <span>{both(text)}</span>
+        {action}
       </h2>
       <div className="column-cards">{children}</div>
     </section>

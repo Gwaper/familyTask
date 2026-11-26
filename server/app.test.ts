@@ -44,6 +44,23 @@ describe('API', () => {
     expect((await board()).tasks[0]).toMatchObject({ done: false, memberIds: ids });
   });
 
+  it('tire au sort les tâches « À faire » selon adulte / enfant', async () => {
+    const res = await send('POST', '/api/members', { name: 'Léa', color: '#22c55e', avatar: '👧', role: 'child' });
+    const { id: lea } = await res.json();
+    const { tasks } = await board();
+    await send('PATCH', `/api/tasks/${tasks[0].id}`, { crew: 'child' });
+    await send('PATCH', `/api/tasks/${tasks[1].id}`, { done: true });
+    expect((await send('POST', '/api/draw')).status).toBe(200);
+    const after = (await board()).tasks;
+    expect(after[0].memberIds).toEqual([lea]);
+    expect(after[1].memberIds).toEqual([]);
+  });
+
+  it('refuse un rôle ou un type de tâche inconnu', async () => {
+    expect((await send('POST', '/api/members', { name: 'Léa', color: '#000', avatar: '👧', role: 'bebe' })).status).toBe(400);
+    expect((await send('PATCH', '/api/tasks/1', { crew: 'tous' })).status).toBe(400);
+  });
+
   it('liste zéro photo si le dossier est absent et refuse les chemins hors du dossier', async () => {
     expect(await (await send('GET', '/api/photos')).json()).toEqual([]);
     expect((await send('GET', '/photos/..%2F..%2Fetc%2Fpasswd')).status).toBe(404);

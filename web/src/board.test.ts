@@ -3,11 +3,11 @@ import type { Board, Task } from '../../shared/types.ts';
 import { allDone, assignedMembers, moveItem, patchTask, toggleId } from './board.ts';
 
 const task = (id: number, done: boolean, memberIds: number[] = []): Task =>
-  ({ id, nameFr: `T${id}`, nameEs: '', icon: '🧸', done, recurring: true, position: id, memberIds });
+  ({ id, nameFr: `T${id}`, nameEs: '', icon: '🧸', done, recurring: true, crew: 'adult', position: id, memberIds });
 const board: Board = {
   members: [
-    { id: 1, name: 'Papa', color: '#000', avatar: '👨', position: 0 },
-    { id: 2, name: 'Léa', color: '#111', avatar: '👧', position: 1 },
+    { id: 1, name: 'Papa', color: '#000', avatar: '👨', role: 'adult', position: 0 },
+    { id: 2, name: 'Léa', color: '#111', avatar: '👧', role: 'child', position: 1 },
   ],
   tasks: [task(1, false, [2, 1]), task(2, true)],
 };

@@ -1,5 +1,5 @@
 import { DatabaseSync, type SQLOutputValue } from 'node:sqlite';
-import type { Board, Member, MemberFields, Task, TaskFields, TaskInput } from '../shared/types.ts';
+import type { Board, Member, MemberInput, MemberFields, MemberRole, Task, TaskCrew, TaskFields, TaskInput } from '../shared/types.ts';
 
 export type Db = DatabaseSync;
 type Row = Record<string, SQLOutputValue>;
@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS members (
   name TEXT NOT NULL,
   color TEXT NOT NULL,
   avatar TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'adult',
   position INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS tasks (
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   icon TEXT NOT NULL,
   done INTEGER NOT NULL DEFAULT 0,
   recurring INTEGER NOT NULL DEFAULT 0,
+  crew TEXT NOT NULL DEFAULT 'adult',
   position INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS task_members (
@@ -37,8 +39,16 @@ export function openDb(file: string): Db {
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  addColumnIfMissing(db, 'members', 'role', "TEXT NOT NULL DEFAULT 'adult'");
+  addColumnIfMissing(db, 'tasks', 'crew', "TEXT NOT NULL DEFAULT 'adult'");
   if (!getMeta(db, 'seeded')) seed(db);
   return db;
+}
+
+/** Migration des bases créées avant l'ajout d'une colonne (CREATE TABLE IF NOT EXISTS ne les modifie pas). */
+function addColumnIfMissing(db: Db, table: OrderedTable, column: string, definition: string): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
 
 /** Seed initial, joué une seule fois : on ne recrée rien si la famille vide ensuite le tableau. */
@@ -83,6 +93,7 @@ const toMember = (r: Row): Member => ({
   name: String(r.name),
   color: String(r.color),
   avatar: String(r.avatar),
+  role: String(r.role) as MemberRole,
   position: Number(r.position),
 });
 
@@ -93,6 +104,7 @@ const toTask = (r: Row, memberIds: number[]): Task => ({
   icon: String(r.icon),
   done: r.done === 1,
   recurring: r.recurring === 1,
+  crew: String(r.crew) as TaskCrew,
   position: Number(r.position),
   memberIds,
 });
@@ -120,8 +132,11 @@ const flag = (value: boolean | undefined): number => (value ? 1 : 0);
 
 export function createTask(db: Db, input: TaskInput): number {
   const result = db.prepare(
-    'INSERT INTO tasks (name_fr, name_es, icon, done, recurring, position) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(input.nameFr, input.nameEs ?? '', input.icon, flag(input.done), flag(input.recurring), nextPosition(db, 'tasks'));
+    'INSERT INTO tasks (name_fr, name_es, icon, done, recurring, crew, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  ).run(
+    input.nameFr, input.nameEs ?? '', input.icon, flag(input.done), flag(input.recurring), input.crew ?? 'adult',
+    nextPosition(db, 'tasks'),
+  );
   return Number(result.lastInsertRowid);
 }
 
@@ -130,14 +145,14 @@ export function updateTask(db: Db, id: number, patch: Partial<TaskFields>): bool
   const current = getBoard(db).tasks.find((t) => t.id === id);
   if (!current) return false;
   const next = { ...current, ...patch };
-  db.prepare('UPDATE tasks SET name_fr = ?, name_es = ?, icon = ?, done = ?, recurring = ? WHERE id = ?')
-    .run(next.nameFr, next.nameEs, next.icon, flag(next.done), flag(next.recurring), id);
+  db.prepare('UPDATE tasks SET name_fr = ?, name_es = ?, icon = ?, done = ?, recurring = ?, crew = ? WHERE id = ?')
+    .run(next.nameFr, next.nameEs, next.icon, flag(next.done), flag(next.recurring), next.crew, id);
   return true;
 }
 
-export function createMember(db: Db, input: MemberFields): number {
-  const result = db.prepare('INSERT INTO members (name, color, avatar, position) VALUES (?, ?, ?, ?)')
-    .run(input.name, input.color, input.avatar, nextPosition(db, 'members'));
+export function createMember(db: Db, input: MemberInput): number {
+  const result = db.prepare('INSERT INTO members (name, color, avatar, role, position) VALUES (?, ?, ?, ?, ?)')
+    .run(input.name, input.color, input.avatar, input.role ?? 'adult', nextPosition(db, 'members'));
   return Number(result.lastInsertRowid);
 }
 
@@ -145,8 +160,8 @@ export function updateMember(db: Db, id: number, patch: Partial<MemberFields>): 
   const current = getBoard(db).members.find((m) => m.id === id);
   if (!current) return false;
   const next = { ...current, ...patch };
-  db.prepare('UPDATE members SET name = ?, color = ?, avatar = ? WHERE id = ?')
-    .run(next.name, next.color, next.avatar, id);
+  db.prepare('UPDATE members SET name = ?, color = ?, avatar = ?, role = ? WHERE id = ?')
+    .run(next.name, next.color, next.avatar, next.role, id);
   return true;
 }
 
@@ -158,14 +173,21 @@ export function deleteRow(db: Db, table: OrderedTable, id: number): boolean {
 /** Remplace les personnes attribuées à une tâche (les ids inconnus sont ignorés). */
 export function setTaskMembers(db: Db, taskId: number, memberIds: number[]): boolean {
   if (!db.prepare('SELECT 1 FROM tasks WHERE id = ?').get(taskId)) return false;
-  transaction(db, () => {
-    db.prepare('DELETE FROM task_members WHERE task_id = ?').run(taskId);
-    const insert = db.prepare(
-      'INSERT OR IGNORE INTO task_members (task_id, member_id) SELECT ?, id FROM members WHERE id = ?',
-    );
-    for (const memberId of memberIds) insert.run(taskId, memberId);
-  });
+  transaction(db, () => replaceTaskMembers(db, taskId, memberIds));
   return true;
+}
+
+/** Applique un tirage au sort (id de tâche → membres) en une seule transaction. */
+export function applyDraw(db: Db, assignments: Map<number, number[]>): void {
+  transaction(db, () => assignments.forEach((memberIds, taskId) => replaceTaskMembers(db, taskId, memberIds)));
+}
+
+function replaceTaskMembers(db: Db, taskId: number, memberIds: number[]): void {
+  db.prepare('DELETE FROM task_members WHERE task_id = ?').run(taskId);
+  const insert = db.prepare(
+    'INSERT OR IGNORE INTO task_members (task_id, member_id) SELECT ?, id FROM members WHERE id = ?',
+  );
+  for (const memberId of memberIds) insert.run(taskId, memberId);
 }
 
 /** Réordonne selon la liste d'ids fournie (position = index dans la liste). */

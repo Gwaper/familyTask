@@ -3,7 +3,9 @@ import type { Task, TaskInput } from '../../../shared/types.ts';
 import { TASK_EMOJIS } from '../emojis.ts';
 import { both, t } from '../i18n.ts';
 import { say, useCanSpeak } from '../speech.ts';
+import { ChoiceGroup } from './ChoiceGroup.tsx';
 import { ImagePicker } from './ImagePicker.tsx';
+import { CREW_CHOICES } from './roles.ts';
 
 interface Props {
   task?: Task;
@@ -16,11 +18,12 @@ export function TaskForm({ task, onSave, onCancel }: Props) {
   const [nameEs, setNameEs] = useState(task?.nameEs ?? '');
   const [icon, setIcon] = useState(task?.icon ?? TASK_EMOJIS[0]);
   const [recurring, setRecurring] = useState(task?.recurring ?? true);
+  const [crew, setCrew] = useState(task?.crew ?? 'adult');
   const canSpeak = useCanSpeak();
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (nameFr.trim()) onSave({ nameFr: nameFr.trim(), nameEs: nameEs.trim(), icon, recurring });
+    if (nameFr.trim()) onSave({ nameFr: nameFr.trim(), nameEs: nameEs.trim(), icon, recurring, crew });
   };
 
   return (
@@ -44,6 +47,7 @@ export function TaskForm({ task, onSave, onCancel }: Props) {
         <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
         🔁 {both(t.recurring)}
       </label>
+      <ChoiceGroup title={t.crew} choices={CREW_CHOICES} value={crew} onChange={setCrew} />
       <div>
         {both(t.picture)}
         <ImagePicker value={icon} emojis={TASK_EMOJIS} onChange={setIcon} />
